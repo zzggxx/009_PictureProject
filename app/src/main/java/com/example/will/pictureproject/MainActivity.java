@@ -9,6 +9,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.LruCache;
 import android.widget.ImageView;
 
+/**
+ * 控制picture的两种方法:1,压缩;2,限制内存上限.
+ */
 public class MainActivity extends AppCompatActivity {
 
     private LruCache<String, Bitmap> mMemoryCache;
