@@ -92,11 +92,13 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
         };
         try {
             // 获取图片缓存路径
+            // uniqueName:对不同类型的数据进行区分而设定的一个唯一值，比如说在网易新闻缓存路径下看到的bitmap、object等文件夹
             File cacheDir = getDiskCacheDir(context, "thumb");
             if (!cacheDir.exists()) {
                 cacheDir.mkdirs();
             }
             // 创建DiskLruCache实例，初始化缓存数据
+            /*valueCount:同一个key可以对应多少个缓存文件，基本都是传1;appVersion:没变一次上次的数据将会全部清空*/
             mDiskLruCache = DiskLruCache
                     .open(cacheDir, getAppVersion(context), 1, 10 * 1024 * 1024);
         } catch (IOException e) {
@@ -325,6 +327,7 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
 
         /**
          * 内存中没有的话现在开始取本地和网络的图片都是在子线程中进行的.
+         *
          * @param params
          * @return
          */
@@ -345,14 +348,15 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
                     if (editor != null) {
                         OutputStream outputStream = editor.newOutputStream(0);
                         if (downloadUrlToStream(imageUrl, outputStream)) {
-                            editor.commit();
+                            editor.commit();//写入操作
                         } else {
-                            editor.abort();
+                            editor.abort();//放弃写入
                         }
                     }
                     // 缓存被写入后，再次查找key对应的缓存
                     snapShot = mDiskLruCache.get(key);
                 }
+                //获得的也是文件流,并不是直接的图片.
                 if (snapShot != null) {
                     fileInputStream = (FileInputStream) snapShot.getInputStream(0);
                     fileDescriptor = fileInputStream.getFD();
@@ -410,6 +414,7 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
                 out = new BufferedOutputStream(outputStream, 8 * 1024);
                 int b;
                 while ((b = in.read()) != -1) {
+                    //写到了输出流中
                     out.write(b);
                 }
                 return true;
