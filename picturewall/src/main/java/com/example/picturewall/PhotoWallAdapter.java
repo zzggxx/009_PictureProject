@@ -1,9 +1,12 @@
 package com.example.picturewall;
 
 import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
+import android.os.Environment;
 import android.support.v4.util.LruCache;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,8 +16,19 @@ import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
 
+import com.example.picturewall.disklrucache.DiskLruCache;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileDescriptor;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -29,6 +43,11 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
      * 图片缓存技术的核心类，用于缓存所有下载好的图片，在程序内存达到设定值时会将最少最近使用的图片移除掉。
      */
     private LruCache<String, Bitmap> mMemoryCache;
+
+    /**
+     * 图片硬盘缓存核心类。
+     */
+    private DiskLruCache mDiskLruCache;
 
     /**
      * GridView的实例
@@ -50,6 +69,11 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
      */
     private boolean isFirstEnter = true;
 
+    /**
+     * 记录每个子项的高度。
+     */
+    private int mItemHeight = 0;
+
     public PhotoWallAdapter(Context context, int textViewResourceId, String[] objects, GridView photoWall) {
         super(context, textViewResourceId, objects);
 
@@ -66,7 +90,46 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
                 return bitmap.getByteCount();
             }
         };
+        try {
+            // 获取图片缓存路径
+            File cacheDir = getDiskCacheDir(context, "thumb");
+            if (!cacheDir.exists()) {
+                cacheDir.mkdirs();
+            }
+            // 创建DiskLruCache实例，初始化缓存数据
+            mDiskLruCache = DiskLruCache
+                    .open(cacheDir, getAppVersion(context), 1, 10 * 1024 * 1024);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         mPhotoWall.setOnScrollListener(this);
+    }
+
+    /**
+     * 根据传入的uniqueName获取硬盘缓存的路径地址。
+     */
+    public File getDiskCacheDir(Context context, String uniqueName) {
+        String cachePath;
+        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())
+                || !Environment.isExternalStorageRemovable()) {
+            cachePath = context.getExternalCacheDir().getPath();
+        } else {
+            cachePath = context.getCacheDir().getPath();
+        }
+        return new File(cachePath + File.separator + uniqueName);
+    }
+
+    /**
+     * 获取当前应用程序的版本号。
+     */
+    public int getAppVersion(Context context) {
+        try {
+            PackageInfo info = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+            return info.versionCode;
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
+        return 1;
     }
 
     @Override
@@ -79,6 +142,10 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
             view = convertView;
         }
         final ImageView photo = (ImageView) view.findViewById(R.id.photo);
+        if (photo.getLayoutParams().height != mItemHeight) {
+            photo.getLayoutParams().height = mItemHeight;
+        }
+
         // 给ImageView设置一个Tag，保证异步加载图片时不会乱序,并且需要在主线程中添加tag不能再子线程中添加.
         photo.setTag(url);
         setImageView(url, photo);
@@ -189,6 +256,59 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
         }
     }
 
+    /**
+     * 设置item子项的高度。
+     */
+    public void setItemHeight(int height) {
+        if (height == mItemHeight) {
+            return;
+        }
+        mItemHeight = height;
+        notifyDataSetChanged();
+    }
+
+    /**
+     * 将缓存记录同步到journal文件中。
+     */
+    public void fluchCache() {
+        if (mDiskLruCache != null) {
+            try {
+                mDiskLruCache.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /*-----------------------------------对key值进行加密-------------------------------------------*/
+
+    /**
+     * 使用MD5算法对传入的key进行加密并返回。
+     */
+    public String hashKeyForDisk(String key) {
+        String cacheKey;
+        try {
+            final MessageDigest mDigest = MessageDigest.getInstance("MD5");
+            mDigest.update(key.getBytes());
+            cacheKey = bytesToHexString(mDigest.digest());
+        } catch (NoSuchAlgorithmException e) {
+            cacheKey = String.valueOf(key.hashCode());
+        }
+        return cacheKey;
+    }
+
+    private String bytesToHexString(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < bytes.length; i++) {
+            String hex = Integer.toHexString(0xFF & bytes[i]);
+            if (hex.length() == 1) {
+                sb.append('0');
+            }
+            sb.append(hex);
+        }
+        return sb.toString();
+    }
+
     /*------------------------------AsyncTask----------------------------------------------------*/
 
     /**
@@ -203,16 +323,61 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
          */
         private String imageUrl;
 
+        /**
+         * 内存中没有的话现在开始取本地和网络的图片都是在子线程中进行的.
+         * @param params
+         * @return
+         */
         @Override
         protected Bitmap doInBackground(String... params) {
             imageUrl = params[0];//不定参数使用0,1,2拿出来.
-            // 在后台开始下载图片
-            Bitmap bitmap = downloadBitmap(params[0]);
-            if (bitmap != null) {
-                // 图片下载完成后缓存到LrcCache中
-                addBitmapToMemoryCache(params[0], bitmap);
+            FileDescriptor fileDescriptor = null;
+            FileInputStream fileInputStream = null;
+            DiskLruCache.Snapshot snapShot = null;
+            try {
+                // 生成图片URL对应的key
+                final String key = hashKeyForDisk(imageUrl);
+                // 查找key对应的缓存
+                snapShot = mDiskLruCache.get(key);
+                if (snapShot == null) {
+                    // 如果没有找到对应的缓存，则准备从网络上请求数据，并写入缓存
+                    DiskLruCache.Editor editor = mDiskLruCache.edit(key);
+                    if (editor != null) {
+                        OutputStream outputStream = editor.newOutputStream(0);
+                        if (downloadUrlToStream(imageUrl, outputStream)) {
+                            editor.commit();
+                        } else {
+                            editor.abort();
+                        }
+                    }
+                    // 缓存被写入后，再次查找key对应的缓存
+                    snapShot = mDiskLruCache.get(key);
+                }
+                if (snapShot != null) {
+                    fileInputStream = (FileInputStream) snapShot.getInputStream(0);
+                    fileDescriptor = fileInputStream.getFD();
+                }
+                // 将缓存数据解析成Bitmap对象
+                Bitmap bitmap = null;
+                if (fileDescriptor != null) {
+                    bitmap = BitmapFactory.decodeFileDescriptor(fileDescriptor);
+                }
+                if (bitmap != null) {
+                    // 将Bitmap对象添加到内存缓存当中
+                    addBitmapToMemoryCache(params[0], bitmap);
+                }
+                return bitmap;
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (fileDescriptor == null && fileInputStream != null) {
+                    try {
+                        fileInputStream.close();
+                    } catch (IOException e) {
+                    }
+                }
             }
-            return bitmap;
+            return null;
         }
 
         @Override
@@ -224,6 +389,48 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
                 imageView.setImageBitmap(bitmap);
             }
             taskCollection.remove(this);
+        }
+
+        /*-----------------------------------下载图片-------------------------------------------*/
+
+        /**
+         * 建立HTTP请求，并获取Bitmap对象。
+         *
+         * @param urlString 图片的URL地址
+         * @return 解析后的Bitmap对象
+         */
+        private boolean downloadUrlToStream(String urlString, OutputStream outputStream) {
+            HttpURLConnection urlConnection = null;
+            BufferedOutputStream out = null;
+            BufferedInputStream in = null;
+            try {
+                final URL url = new URL(urlString);
+                urlConnection = (HttpURLConnection) url.openConnection();
+                in = new BufferedInputStream(urlConnection.getInputStream(), 8 * 1024);
+                out = new BufferedOutputStream(outputStream, 8 * 1024);
+                int b;
+                while ((b = in.read()) != -1) {
+                    out.write(b);
+                }
+                return true;
+            } catch (final IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (urlConnection != null) {
+                    urlConnection.disconnect();
+                }
+                try {
+                    if (out != null) {
+                        out.close();
+                    }
+                    if (in != null) {
+                        in.close();
+                    }
+                } catch (final IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return false;
         }
 
         /**

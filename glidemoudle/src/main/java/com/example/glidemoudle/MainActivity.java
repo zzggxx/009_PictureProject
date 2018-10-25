@@ -8,6 +8,10 @@ import android.widget.ImageView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
+/**
+ * glide讲解
+ *
+ */
 public class MainActivity extends AppCompatActivity {
 
     private String img_path = "http://pic.netbian.com/uploads/allimg/180906/180605-1536228365101e.jpg";
