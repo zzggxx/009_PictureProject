@@ -311,6 +311,18 @@ public class PhotoWallAdapter extends ArrayAdapter<String> implements AbsListVie
         return sb.toString();
     }
 
+    public void diskCacheSize() {
+        mDiskLruCache.size();
+    }
+
+    public void diskCacheDelete() {
+        try {
+            mDiskLruCache.delete();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     /*------------------------------AsyncTask----------------------------------------------------*/
 
     /**

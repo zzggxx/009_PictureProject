@@ -2,10 +2,11 @@ package com.example.picturewall;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.view.View;
 import android.view.ViewTreeObserver;
 import android.widget.GridView;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     /**
      * 用于展示照片墙的GridView
@@ -31,6 +32,8 @@ public class MainActivity extends AppCompatActivity {
                 R.dimen.image_thumbnail_spacing);
 
         mPhotoWall = (GridView) findViewById(R.id.photo_wall);
+        findViewById(R.id.btn_size).setOnClickListener(this);
+        findViewById(R.id.btn_delete).setOnClickListener(this);
 
         mAdapter = new PhotoWallAdapter(this, 0, Images.imageThumbUrls, mPhotoWall);
         mPhotoWall.setAdapter(mAdapter);
@@ -66,7 +69,22 @@ public class MainActivity extends AppCompatActivity {
         mAdapter.cancelAllTasks();
     }
 
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.btn_size:
+                mAdapter.diskCacheSize();
+                break;
+            case R.id.btn_delete:
+                mAdapter.diskCacheDelete();
+                break;
+        }
+    }
+
     /**
+     *
+     * DiskLruCache方法
+     *
      * 1. size()
      这个方法会返回当前缓存路径下所有缓存数据的总字节数，以byte为单位，如果应用程序中需要在界面上显示当前缓存数据的总大小，就可以通过调用这个方法计算出来。
 
