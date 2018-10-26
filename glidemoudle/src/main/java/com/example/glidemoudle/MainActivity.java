@@ -7,10 +7,15 @@ import android.widget.ImageView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.resource.drawable.GlideDrawable;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.animation.GlideAnimation;
+import com.bumptech.glide.request.target.SimpleTarget;
+import com.bumptech.glide.request.target.Target;
+import com.example.glidemoudle.transfrom.CircleCrop;
 
 /**
  * glide讲解
- *
  */
 public class MainActivity extends AppCompatActivity {
 
@@ -28,8 +33,25 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 loadImg();
+//                simpleTarget();
             }
         });
+
+    }
+
+    private void simpleTarget() {
+
+//        泛型GlideDrawable是不确定的gif还是静态图,若是肯定的静态图泛型可以直接指定Bitmap.
+        SimpleTarget<GlideDrawable> simpleTarget = new SimpleTarget<GlideDrawable>() {
+            @Override
+            public void onResourceReady(GlideDrawable resource, GlideAnimation<? super GlideDrawable> glideAnimation) {
+//                获取到将要放置到imageview中的图片,此时可以进行任意的操作.
+                mImageView.setImageDrawable(resource);
+            }
+        };
+        Glide.with(this)
+                .load(img_path)
+                .into(simpleTarget);
     }
 
     private void loadImg() {
@@ -43,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
 
                 //load(),可以从url,uri,recourse,路径等地方加载.
                 //最终load()方法返回的其实就是一个DrawableTypeRequest对象,从哪里加载和加载的格式的判断
-                .load(img_path_gif)
+                .load(img_path)
 
                 //自动判定图片的格式,是gif图还是静态图,若是动态的asBitmap()可取gif第一帧变为静态图,但是静态不能变为gif(会加载失败).
                 //.asBitmap()
@@ -57,6 +79,21 @@ public class MainActivity extends AppCompatActivity {
 
                 //内存的缓存策略(true不使用内存缓存,若是不禁用默认就是开启的)
                 //.skipMemoryCache(true)
+
+                //监听回调
+                .listener(new RequestListener<String, GlideDrawable>() {
+                    @Override
+                    public boolean onException(Exception e, String model, Target<GlideDrawable> target, boolean isFirstResource) {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean onResourceReady(GlideDrawable resource, String model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
+                        return false;
+                    }
+                })
+
+                .transform(new CircleCrop(this))
 
                 //本地缓存策略设置(不缓存每一次都从网络加载)
                 //DiskCacheStrategy.NONE：表示不缓存任何内容。
