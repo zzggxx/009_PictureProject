@@ -12,7 +12,6 @@ import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.animation.GlideAnimation;
 import com.bumptech.glide.request.target.SimpleTarget;
 import com.bumptech.glide.request.target.Target;
-import com.example.glidemoudle.transfrom.CircleCrop;
 
 /**
  * glide讲解
@@ -93,7 +92,8 @@ public class MainActivity extends AppCompatActivity {
                     }
                 })
 
-                .transform(new CircleCrop(this))
+                //变化的有问题
+                //.transform(new CircleCrop(this))
 
                 //本地缓存策略设置(不缓存每一次都从网络加载)
                 //DiskCacheStrategy.NONE：表示不缓存任何内容。

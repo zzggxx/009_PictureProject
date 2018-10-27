@@ -1,1 +1,1 @@
-include ':app', ':picturewall', ':glidemoudle'
+include ':app', ':picturewall', ':glidemoudle', ':glidemoudle_2'
