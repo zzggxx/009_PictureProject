@@ -14,7 +14,7 @@ import com.bumptech.glide.request.target.SimpleTarget;
 import com.bumptech.glide.request.target.Target;
 
 /**
- * glide讲解
+ * glide讲解,版本3.7.0
  */
 public class MainActivity extends AppCompatActivity {
 
