@@ -33,11 +33,15 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
-//    郭霖博客讲解3.7.0版本,最新的4.8.0版本
-//    implementation 'com.github.bumptech.glide:glide:4.8.0'
+    //    郭霖博客讲解3.7.0版本,最新的4.8.0版本
+    //    implementation 'com.github.bumptech.glide:glide:4.8.0'
     implementation 'com.github.bumptech.glide:glide:3.7.0'
 
-//    glide中图片变换库,加载3.3.0和glide 3.7.0产生了冲突
-//    implementation 'jp.wasabeef:glide-transformations:3.3.0'
-//    implementation 'jp.wasabeef:glide-transformations:2.0.1'
+    //    glide中图片变换库,加载3.3.0和glide 3.7.0产生了冲突
+    //    implementation 'jp.wasabeef:glide-transformations:3.3.0'
+    //    implementation 'jp.wasabeef:glide-transformations:2.0.1'
+
+    //    组件替换,替换的是http请求方式,原始的是httpURLconnection,官方文档有替换成其他的方式,别忘记了引入其他请求的依赖库
+//    implementation 'com.github.bumptech.glide:okhttp3-integration:1.5.0@aar'
+    implementation 'com.squareup.okhttp3:okhttp:3.11.0'
 }
