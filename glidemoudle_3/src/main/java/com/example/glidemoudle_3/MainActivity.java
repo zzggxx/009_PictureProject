@@ -1,10 +1,12 @@
 package com.example.glidemoudle_3;
 
 import android.os.Bundle;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
@@ -61,6 +63,52 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         Log.i(TAG, "onClick: " + totalSizeOfFilesInDir);
                     }
                 });
+
+                /*------------其实不需要更改图片的缓存路径只需要知道在哪里即可--------------*/
+                final String path = getCacheDir().getAbsolutePath() + File.separator + "image_manager_disk_cache";
+                long totalSizeOfFilesInDirpath = CommonUtils.getTotalSizeOfFilesInDir(new File(path));
+                Log.i(TAG, "totalSizeOfFilesInDirpath: " + totalSizeOfFilesInDirpath);
+                int cacheSize = (int) totalSizeOfFilesInDirpath / 1024 / 1024;
+
+                /*---如果父布局是一个CoordinatorLayout，那么Snackbar还会有别的一些特性：可以滑动消除；
+                并且如果有FloatingActionButton时，会将FloatingActionButton上移，而不会挡住Snackbar的显示。反之:
+                则不会有毛线的上移和消除动作了----*/
+                Snackbar.make(mImageView, "清除缓存", Snackbar.LENGTH_SHORT)
+                        .setAction("撤销", new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+
+                            }
+                        })
+                        .setCallback(new Snackbar.Callback() {
+
+                            //                            显示的时候
+                            @Override
+                            public void onShown(Snackbar sb) {
+                                super.onShown(sb);
+                            }
+
+                            //                            以什么动作进行了去掉snackBar
+                            @Override
+                            public void onDismissed(Snackbar transientBottomBar, int event) {
+                                super.onDismissed(transientBottomBar, event);
+                                switch (event) {
+                                    case Snackbar.Callback.DISMISS_EVENT_CONSECUTIVE:
+                                    case Snackbar.Callback.DISMISS_EVENT_MANUAL:
+                                    case Snackbar.Callback.DISMISS_EVENT_SWIPE:
+                                    case Snackbar.Callback.DISMISS_EVENT_TIMEOUT:
+                                        CommonUtils.deleteDirectory(path);
+                                        Toast.makeText(MainActivity.this, "删除成功", Toast.LENGTH_SHORT).show();
+                                        break;
+                                    case Snackbar.Callback.DISMISS_EVENT_ACTION:
+                                        Toast.makeText(MainActivity.this, "撤销了删除操作", Toast.LENGTH_SHORT).show();
+                                        break;
+
+                                }
+                            }
+                        })
+                        .show();
+
                 /*--------------------------------------------------------------------------------*/
 
 
